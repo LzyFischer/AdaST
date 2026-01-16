@@ -20,6 +20,7 @@ ckpt/
 *.pyc
 *.txt
 *.core
+*.ipynb
 
 *.py[cod]
 *$py.class
