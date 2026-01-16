@@ -1,49 +1,59 @@
 import os
 import sys
-import torch
+import numpy as np
 from easydict import EasyDict
+
 sys.path.append(os.path.abspath(__file__ + '/../../..'))
 
-from basicts.metrics import masked_mae, masked_mape, masked_rmse
+from basicts.metrics import masked_mae, masked_mape, masked_rmse, masked_huber
 from basicts.data import TimeSeriesForecastingDataset
-from basicts.runners import SimpleTimeSeriesForecastingRunner
 from basicts.scaler import ZScoreScaler
-from basicts.utils import get_regular_settings, load_adj
+from basicts.utils import get_regular_settings
 
-from .arch import STAEformer
+from .arch import HimNet
+from .runner import HimNetRunner
 
 ############################## Hot Parameters ##############################
 # Dataset & Metrics configuration
-DATA_NAME = 'PEMS03'  # Dataset name
+DATA_NAME = 'PurpleAir'  # Dataset name
 regular_settings = get_regular_settings(DATA_NAME)
-INPUT_LEN = regular_settings['INPUT_LEN']  # Length of input sequence
-OUTPUT_LEN = regular_settings['OUTPUT_LEN']  # Length of output sequence
+INPUT_LEN = 12  # Length of input sequence
+OUTPUT_LEN = 12  # Length of output sequence
 TRAIN_VAL_TEST_RATIO = regular_settings['TRAIN_VAL_TEST_RATIO']  # Train/Validation/Test split ratios
 NORM_EACH_CHANNEL = regular_settings['NORM_EACH_CHANNEL'] # Whether to normalize each channel of the data
 RESCALE = regular_settings['RESCALE'] # Whether to rescale the data
 NULL_VAL = regular_settings['NULL_VAL'] # Null value in the data
 # Model architecture and parameters
-MODEL_ARCH = STAEformer
+MODEL_ARCH = HimNet
+HIMNET_CONFIG = {
+  'lr': 0.001,
+  'eps': 0.001,
+  'weight_decay': 0.0001,
+  'milestones': [30, 50],
+  'clip_grad': 5,
+  'batch_size': 16,
+  'max_epochs': 100,
+  'early_stop': 20
+}
+
+NUM_EPOCHS = HIMNET_CONFIG['max_epochs']
 
 MODEL_PARAM = {
-    "num_nodes" : 358,
-    "in_steps": INPUT_LEN,
-    "out_steps": OUTPUT_LEN,
-    "steps_per_day": 288, # number of time steps per day
-    "input_dim": 3, # the C in [B, L, N, C]
-    "output_dim": 1,
-    "input_embedding_dim": 24,
-    "tod_embedding_dim": 24,
-    "dow_embedding_dim": 24,
-    "spatial_embedding_dim": 0,
-    "adaptive_embedding_dim": 80,
-    "feed_forward_dim": 256,
-    "num_heads": 4,
-    "num_layers": 3,
-    "dropout": 0.1,
-    "use_mixed_proj": True,
+    'num_nodes': 55,
+    'input_dim': 3,
+    'output_dim': 1,
+    'tod_embedding_dim': 12,
+    'dow_embedding_dim': 4,
+    'out_steps': 12,
+    'hidden_dim': 64,
+    'num_layers': 1,
+    'cheb_k': 2,
+    'ycov_dim': 2,
+    'node_embedding_dim': 16,
+    'st_embedding_dim': 16,
+    'tf_decay_steps': 4000,
+    'use_teacher_forcing': True
 }
-NUM_EPOCHS = 40
 
 ############################## General Configuration ##############################
 CFG = EasyDict()
@@ -51,7 +61,8 @@ CFG = EasyDict()
 CFG.DESCRIPTION = 'An Example Config'
 CFG.GPU_NUM = 1 # Number of GPUs to use (0 for CPU mode)
 # Runner
-CFG.RUNNER = SimpleTimeSeriesForecastingRunner
+CFG.RUNNER = HimNetRunner
+
 
 ############################## Dataset Configuration ##############################
 CFG.DATASET = EasyDict()
@@ -85,6 +96,7 @@ CFG.MODEL.ARCH = MODEL_ARCH
 CFG.MODEL.PARAM = MODEL_PARAM
 CFG.MODEL.FORWARD_FEATURES = [0, 1, 2]
 CFG.MODEL.TARGET_FEATURES = [0]
+CFG.MODEL.SETUP_GRAPH = False
 
 ############################## Metrics Configuration ##############################
 
@@ -106,25 +118,37 @@ CFG.TRAIN.CKPT_SAVE_DIR = os.path.join(
     MODEL_ARCH.__name__,
     '_'.join([DATA_NAME, str(CFG.TRAIN.NUM_EPOCHS), str(INPUT_LEN), str(OUTPUT_LEN)])
 )
-CFG.TRAIN.LOSS = masked_mae
+CFG.TRAIN.LOSS = masked_huber
+CFG.TRAIN.LOSS_ARGS = {
+     'reduction': 'mean',
+     'delta': 1.0,
+}
 # Optimizer settings
 CFG.TRAIN.OPTIM = EasyDict()
 CFG.TRAIN.OPTIM.TYPE = "Adam"
 CFG.TRAIN.OPTIM.PARAM = {
-    "lr": 0.001,
-    "weight_decay": 0.0003,
+    "lr":max(HIMNET_CONFIG['lr']*CFG.GPU_NUM, HIMNET_CONFIG['lr']),
+    "eps":HIMNET_CONFIG['eps'],
+    "weight_decay":HIMNET_CONFIG['weight_decay'],
 }
 # Learning rate scheduler settings
 CFG.TRAIN.LR_SCHEDULER = EasyDict()
 CFG.TRAIN.LR_SCHEDULER.TYPE = "MultiStepLR"
 CFG.TRAIN.LR_SCHEDULER.PARAM = {
-    "milestones": [20, 25],
-    "gamma": 0.1
+    'milestones': HIMNET_CONFIG['milestones'],
+    'gamma': HIMNET_CONFIG.get('lr_decay_rate', 0.1),
+    'verbose': False
 }
 # Train data loader settings
 CFG.TRAIN.DATA = EasyDict()
-CFG.TRAIN.DATA.BATCH_SIZE = 16
+CFG.TRAIN.DATA.BATCH_SIZE = HIMNET_CONFIG['batch_size']
 CFG.TRAIN.DATA.SHUFFLE = True
+
+CFG.TRAIN.EARLY_STOPPING_PATIENCE = HIMNET_CONFIG['early_stop']
+
+CFG.TRAIN.CLIP_GRAD_PARAM = {
+    'max_norm': HIMNET_CONFIG.get('clip_grad', 5)  
+}
 
 ############################## Validation Configuration ##############################
 CFG.VAL = EasyDict()

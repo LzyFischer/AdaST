@@ -2,19 +2,20 @@ import os
 import sys
 import torch
 from easydict import EasyDict
+import random
 sys.path.append(os.path.abspath(__file__ + '/../../..'))
 
 from basicts.metrics import masked_mae, masked_mape, masked_rmse
 from basicts.data import TimeSeriesForecastingDataset
-from basicts.runners import SimpleTimeSeriesForecastingRunner
+from basicts.runners import EmbTimeSeriesForecastingRunner
 from basicts.scaler import ZScoreScaler
 from basicts.utils import get_regular_settings, load_adj
 
-from .arch import STAEformer
+from .arch import AdaST
 
 ############################## Hot Parameters ##############################
 # Dataset & Metrics configuration
-DATA_NAME = 'PEMS03'  # Dataset name
+DATA_NAME = 'PurpleAir'  # Dataset name
 regular_settings = get_regular_settings(DATA_NAME)
 INPUT_LEN = regular_settings['INPUT_LEN']  # Length of input sequence
 OUTPUT_LEN = regular_settings['OUTPUT_LEN']  # Length of output sequence
@@ -23,19 +24,19 @@ NORM_EACH_CHANNEL = regular_settings['NORM_EACH_CHANNEL'] # Whether to normalize
 RESCALE = regular_settings['RESCALE'] # Whether to rescale the data
 NULL_VAL = regular_settings['NULL_VAL'] # Null value in the data
 # Model architecture and parameters
-MODEL_ARCH = STAEformer
+MODEL_ARCH = AdaST
 
 MODEL_PARAM = {
-    "num_nodes" : 358,
+    "num_nodes" : 55,
     "in_steps": INPUT_LEN,
     "out_steps": OUTPUT_LEN,
-    "steps_per_day": 288, # number of time steps per day
+    "steps_per_day": 24, # number of time steps per day
     "input_dim": 3, # the C in [B, L, N, C]
     "output_dim": 1,
     "input_embedding_dim": 24,
-    "tod_embedding_dim": 24,
+    "tod_embedding_dim": 0,
     "dow_embedding_dim": 24,
-    "spatial_embedding_dim": 0,
+    "spatial_embedding_dim": 24,
     "adaptive_embedding_dim": 80,
     "feed_forward_dim": 256,
     "num_heads": 4,
@@ -43,7 +44,7 @@ MODEL_PARAM = {
     "dropout": 0.1,
     "use_mixed_proj": True,
 }
-NUM_EPOCHS = 40
+NUM_EPOCHS = 50
 
 ############################## General Configuration ##############################
 CFG = EasyDict()
@@ -51,7 +52,8 @@ CFG = EasyDict()
 CFG.DESCRIPTION = 'An Example Config'
 CFG.GPU_NUM = 1 # Number of GPUs to use (0 for CPU mode)
 # Runner
-CFG.RUNNER = SimpleTimeSeriesForecastingRunner
+CFG.RUNNER = EmbTimeSeriesForecastingRunner
+# CFG.SEED = random.randint(-1e6, 1e6)
 
 ############################## Dataset Configuration ##############################
 CFG.DATASET = EasyDict()
@@ -111,7 +113,7 @@ CFG.TRAIN.LOSS = masked_mae
 CFG.TRAIN.OPTIM = EasyDict()
 CFG.TRAIN.OPTIM.TYPE = "Adam"
 CFG.TRAIN.OPTIM.PARAM = {
-    "lr": 0.001,
+    "lr": 0.0001,
     "weight_decay": 0.0003,
 }
 # Learning rate scheduler settings
@@ -137,6 +139,9 @@ CFG.TEST = EasyDict()
 CFG.TEST.INTERVAL = 1
 CFG.TEST.DATA = EasyDict()
 CFG.TEST.DATA.BATCH_SIZE = 64
+# Enable saving embeddings and gate weights during testing
+CFG.TEST.SAVE_EMBEDDINGS = True      # Set to True to save embeddings (st, s, t)
+CFG.TEST.SAVE_GATE_WEIGHTS = True    # Set to True to save gate weights
 
 ############################## Evaluation Configuration ##############################
 

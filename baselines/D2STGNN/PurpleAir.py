@@ -10,11 +10,11 @@ from basicts.runners import SimpleTimeSeriesForecastingRunner
 from basicts.scaler import ZScoreScaler
 from basicts.utils import get_regular_settings, load_adj
 
-from .arch import STAEformer
+from .arch import D2STGNN
 
 ############################## Hot Parameters ##############################
 # Dataset & Metrics configuration
-DATA_NAME = 'PEMS03'  # Dataset name
+DATA_NAME = 'PurpleAir'  # Dataset name
 regular_settings = get_regular_settings(DATA_NAME)
 INPUT_LEN = regular_settings['INPUT_LEN']  # Length of input sequence
 OUTPUT_LEN = regular_settings['OUTPUT_LEN']  # Length of output sequence
@@ -23,27 +23,27 @@ NORM_EACH_CHANNEL = regular_settings['NORM_EACH_CHANNEL'] # Whether to normalize
 RESCALE = regular_settings['RESCALE'] # Whether to rescale the data
 NULL_VAL = regular_settings['NULL_VAL'] # Null value in the data
 # Model architecture and parameters
-MODEL_ARCH = STAEformer
-
+MODEL_ARCH = D2STGNN
+adj_mx, _ = load_adj("datasets/" + DATA_NAME +
+                     "/adj_mx.pkl", "doubletransition")
 MODEL_PARAM = {
-    "num_nodes" : 358,
-    "in_steps": INPUT_LEN,
-    "out_steps": OUTPUT_LEN,
-    "steps_per_day": 288, # number of time steps per day
-    "input_dim": 3, # the C in [B, L, N, C]
-    "output_dim": 1,
-    "input_embedding_dim": 24,
-    "tod_embedding_dim": 24,
-    "dow_embedding_dim": 24,
-    "spatial_embedding_dim": 0,
-    "adaptive_embedding_dim": 80,
-    "feed_forward_dim": 256,
-    "num_heads": 4,
-    "num_layers": 3,
+    "num_feat": 1,
+    "num_hidden": 32,
     "dropout": 0.1,
-    "use_mixed_proj": True,
+    "seq_length": 12,
+    "k_t": 3,
+    "k_s": 2,
+    "gap": 3,
+    "num_nodes": 55,
+    "adjs": [torch.tensor(adj) for adj in adj_mx],
+    "num_layers": 5,
+    "num_modalities": 2,
+    "node_hidden": 12,
+    "time_emb_dim": 12,
+    "time_in_day_size": 288,
+    "day_in_week_size": 7,
 }
-NUM_EPOCHS = 40
+NUM_EPOCHS = 100
 
 ############################## General Configuration ##############################
 CFG = EasyDict()
@@ -111,20 +111,30 @@ CFG.TRAIN.LOSS = masked_mae
 CFG.TRAIN.OPTIM = EasyDict()
 CFG.TRAIN.OPTIM.TYPE = "Adam"
 CFG.TRAIN.OPTIM.PARAM = {
-    "lr": 0.001,
-    "weight_decay": 0.0003,
+    "lr": 0.002,
+    "weight_decay": 1.0e-5,
+    "eps": 1.0e-8
 }
 # Learning rate scheduler settings
 CFG.TRAIN.LR_SCHEDULER = EasyDict()
 CFG.TRAIN.LR_SCHEDULER.TYPE = "MultiStepLR"
 CFG.TRAIN.LR_SCHEDULER.PARAM = {
-    "milestones": [20, 25],
-    "gamma": 0.1
+    "milestones": [1, 30, 38, 46, 54, 62, 70, 80],
+    "gamma": 0.5
 }
 # Train data loader settings
 CFG.TRAIN.DATA = EasyDict()
 CFG.TRAIN.DATA.BATCH_SIZE = 16
 CFG.TRAIN.DATA.SHUFFLE = True
+# Gradient clipping settings
+CFG.TRAIN.CLIP_GRAD_PARAM = {
+    "max_norm": 5.0
+}
+# Curriculum learning
+CFG.TRAIN.CL = EasyDict()
+CFG.TRAIN.CL.WARM_EPOCHS = 30
+CFG.TRAIN.CL.CL_EPOCHS = 3
+CFG.TRAIN.CL.PREDICTION_LENGTH = 12
 
 ############################## Validation Configuration ##############################
 CFG.VAL = EasyDict()

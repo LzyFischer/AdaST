@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument('-cfg', '--config', default='baselines/STID/PEMS08_LTSF.py', help='training config')
     # enter your own checkpoint file path
     parser.add_argument('-ckpt', '--checkpoint', default='checkpoints/STID/PEMS08_100_336_336/97d131cadc14bd2b9ffa892d59d55129/STID_best_val_MAE.pt')
-    parser.add_argument('-g', '--gpus', default='5')
+    parser.add_argument('-g', '--gpus', default='0')
     parser.add_argument('-d', '--device_type', default='gpu')
     parser.add_argument('-b', '--batch_size', default=None) # use the batch size in the config file
     parser.add_argument('-ctx', '--context_length', type=int, default=None, help='context length for inference, only used for utsf models')

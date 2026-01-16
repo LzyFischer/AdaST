@@ -1,49 +1,66 @@
 import os
 import sys
-import torch
+import numpy as np
 from easydict import EasyDict
 sys.path.append(os.path.abspath(__file__ + '/../../..'))
 
 from basicts.metrics import masked_mae, masked_mape, masked_rmse
 from basicts.data import TimeSeriesForecastingDataset
-from basicts.runners import SimpleTimeSeriesForecastingRunner
 from basicts.scaler import ZScoreScaler
 from basicts.utils import get_regular_settings, load_adj
 
-from .arch import STAEformer
+from .arch import STDN
+from .runner import STDNRunner
+from .arch.utils import get_lpls
 
 ############################## Hot Parameters ##############################
 # Dataset & Metrics configuration
-DATA_NAME = 'PEMS03'  # Dataset name
+DATA_NAME = 'PurpleAir'  # Dataset name
 regular_settings = get_regular_settings(DATA_NAME)
-INPUT_LEN = regular_settings['INPUT_LEN']  # Length of input sequence
-OUTPUT_LEN = regular_settings['OUTPUT_LEN']  # Length of output sequence
+INPUT_LEN = 12  # Length of input sequence
+OUTPUT_LEN = 12  # Length of output sequence
 TRAIN_VAL_TEST_RATIO = regular_settings['TRAIN_VAL_TEST_RATIO']  # Train/Validation/Test split ratios
 NORM_EACH_CHANNEL = regular_settings['NORM_EACH_CHANNEL'] # Whether to normalize each channel of the data
 RESCALE = regular_settings['RESCALE'] # Whether to rescale the data
 NULL_VAL = regular_settings['NULL_VAL'] # Null value in the data
 # Model architecture and parameters
-MODEL_ARCH = STAEformer
+MODEL_ARCH = STDN
+NUM_EPOCHS = 100
+adj_mx, _ = load_adj("datasets/" + DATA_NAME +
+                     "/adj_mx.pkl", "original")
 
-MODEL_PARAM = {
-    "num_nodes" : 358,
-    "in_steps": INPUT_LEN,
-    "out_steps": OUTPUT_LEN,
-    "steps_per_day": 288, # number of time steps per day
-    "input_dim": 3, # the C in [B, L, N, C]
-    "output_dim": 1,
-    "input_embedding_dim": 24,
-    "tod_embedding_dim": 24,
-    "dow_embedding_dim": 24,
-    "spatial_embedding_dim": 0,
-    "adaptive_embedding_dim": 80,
-    "feed_forward_dim": 256,
-    "num_heads": 4,
-    "num_layers": 3,
-    "dropout": 0.1,
-    "use_mixed_proj": True,
+model_config = {
+    'Data':{
+        'dataset_name': DATA_NAME,
+        'num_of_vertices': 55,
+        'time_slice_size': 5,
+    },
+    'Training':{
+        'use_nni': 0,
+        'L': 2,
+        'K': 16,
+        'd': 8,
+        'mode': 'train',
+        'batch_size': 64,
+        'epochs': NUM_EPOCHS,
+        'learning_rate': 0.1,
+        'patience': 60,
+        'decay_epoch': 10,
+        'num_his': INPUT_LEN,
+        'num_pred': OUTPUT_LEN,
+        'in_channels': 1,
+        'out_channels': 1,
+        'T_miss_len': 12,
+        'node_miss_rate': 0.005,
+        'self_weight_dis': 0.05,
+        'reference': 3,
+        'order': 3,
+    },
 }
-NUM_EPOCHS = 40
+MODEL_PARAM = {
+    'args': model_config,
+    'bn_decay': 0.1,
+}
 
 ############################## General Configuration ##############################
 CFG = EasyDict()
@@ -51,7 +68,8 @@ CFG = EasyDict()
 CFG.DESCRIPTION = 'An Example Config'
 CFG.GPU_NUM = 1 # Number of GPUs to use (0 for CPU mode)
 # Runner
-CFG.RUNNER = SimpleTimeSeriesForecastingRunner
+CFG.RUNNER = STDNRunner
+
 
 ############################## Dataset Configuration ##############################
 CFG.DATASET = EasyDict()
@@ -65,6 +83,7 @@ CFG.DATASET.PARAM = EasyDict({
     'output_len': OUTPUT_LEN,
     # 'mode' is automatically set by the runner
 })
+CFG.DATASET.LPLS = get_lpls(adj_mx[0])  # Laplacian positional encoding
 
 ############################## Scaler Configuration ##############################
 CFG.SCALER = EasyDict()
@@ -85,6 +104,7 @@ CFG.MODEL.ARCH = MODEL_ARCH
 CFG.MODEL.PARAM = MODEL_PARAM
 CFG.MODEL.FORWARD_FEATURES = [0, 1, 2]
 CFG.MODEL.TARGET_FEATURES = [0]
+CFG.MODEL.SETUP_GRAPH = True
 
 ############################## Metrics Configuration ##############################
 
@@ -111,20 +131,21 @@ CFG.TRAIN.LOSS = masked_mae
 CFG.TRAIN.OPTIM = EasyDict()
 CFG.TRAIN.OPTIM.TYPE = "Adam"
 CFG.TRAIN.OPTIM.PARAM = {
-    "lr": 0.001,
-    "weight_decay": 0.0003,
+    "lr":model_config['Training']['learning_rate'],
 }
 # Learning rate scheduler settings
 CFG.TRAIN.LR_SCHEDULER = EasyDict()
-CFG.TRAIN.LR_SCHEDULER.TYPE = "MultiStepLR"
+CFG.TRAIN.LR_SCHEDULER.TYPE = "StepLR"
 CFG.TRAIN.LR_SCHEDULER.PARAM = {
-    "milestones": [20, 25],
-    "gamma": 0.1
+    "step_size":model_config['Training']['decay_epoch'],
+    "gamma": 0.9
 }
 # Train data loader settings
 CFG.TRAIN.DATA = EasyDict()
-CFG.TRAIN.DATA.BATCH_SIZE = 16
+CFG.TRAIN.DATA.BATCH_SIZE = model_config['Training']['batch_size']
 CFG.TRAIN.DATA.SHUFFLE = True
+
+CFG.TRAIN.EARLY_STOPPING_PATIENCE = model_config['Training']['patience']
 
 ############################## Validation Configuration ##############################
 CFG.VAL = EasyDict()

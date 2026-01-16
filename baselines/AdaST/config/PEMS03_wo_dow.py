@@ -10,7 +10,7 @@ from basicts.runners import SimpleTimeSeriesForecastingRunner
 from basicts.scaler import ZScoreScaler
 from basicts.utils import get_regular_settings, load_adj
 
-from .arch import STAEformer
+from .arch import AdaST
 
 ############################## Hot Parameters ##############################
 # Dataset & Metrics configuration
@@ -23,7 +23,7 @@ NORM_EACH_CHANNEL = regular_settings['NORM_EACH_CHANNEL'] # Whether to normalize
 RESCALE = regular_settings['RESCALE'] # Whether to rescale the data
 NULL_VAL = regular_settings['NULL_VAL'] # Null value in the data
 # Model architecture and parameters
-MODEL_ARCH = STAEformer
+MODEL_ARCH = AdaST
 
 MODEL_PARAM = {
     "num_nodes" : 358,
@@ -34,8 +34,8 @@ MODEL_PARAM = {
     "output_dim": 1,
     "input_embedding_dim": 24,
     "tod_embedding_dim": 24,
-    "dow_embedding_dim": 24,
-    "spatial_embedding_dim": 0,
+    "dow_embedding_dim": 0,
+    "spatial_embedding_dim": 24,
     "adaptive_embedding_dim": 80,
     "feed_forward_dim": 256,
     "num_heads": 4,
@@ -43,7 +43,7 @@ MODEL_PARAM = {
     "dropout": 0.1,
     "use_mixed_proj": True,
 }
-NUM_EPOCHS = 40
+NUM_EPOCHS = 52
 
 ############################## General Configuration ##############################
 CFG = EasyDict()

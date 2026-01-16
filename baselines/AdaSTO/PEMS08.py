@@ -10,45 +10,49 @@ from basicts.runners import SimpleTimeSeriesForecastingRunner
 from basicts.scaler import ZScoreScaler
 from basicts.utils import get_regular_settings, load_adj
 
-from .arch import STAEformer
+from .arch import AdaST
 
 ############################## Hot Parameters ##############################
 # Dataset & Metrics configuration
-DATA_NAME = 'PEMS03'  # Dataset name
+DATA_NAME = 'PEMS08'  # Dataset name
 regular_settings = get_regular_settings(DATA_NAME)
-INPUT_LEN = regular_settings['INPUT_LEN']  # Length of input sequence
-OUTPUT_LEN = regular_settings['OUTPUT_LEN']  # Length of output sequence
-TRAIN_VAL_TEST_RATIO = regular_settings['TRAIN_VAL_TEST_RATIO']  # Train/Validation/Test split ratios
-NORM_EACH_CHANNEL = regular_settings['NORM_EACH_CHANNEL'] # Whether to normalize each channel of the data
-RESCALE = regular_settings['RESCALE'] # Whether to rescale the data
-NULL_VAL = regular_settings['NULL_VAL'] # Null value in the data
-# Model architecture and parameters
-MODEL_ARCH = STAEformer
+INPUT_LEN = 12  # Length of input sequence (L)
+OUTPUT_LEN = 12  # Length of output sequence (L_pred)
+TRAIN_VAL_TEST_RATIO = [0.6, 0.2, 0.2]  # Train/Validation/Test split ratios
+NORM_EACH_CHANNEL = regular_settings.get('NORM_EACH_CHANNEL', False) # Whether to normalize each channel of the data
+RESCALE = regular_settings.get('RESCALE', True) # Whether to rescale the data
+NULL_VAL = regular_settings.get('NULL_VAL', 0.0) # Null value in the data
 
+# Model architecture and parameters
+MODEL_ARCH = AdaST
 MODEL_PARAM = {
-    "num_nodes" : 358,
-    "in_steps": INPUT_LEN,
-    "out_steps": OUTPUT_LEN,
-    "steps_per_day": 288, # number of time steps per day
-    "input_dim": 3, # the C in [B, L, N, C]
+    "L": INPUT_LEN,
+    "L_pred": OUTPUT_LEN,
+    "d_model": 256,
+    "num_layers": 1,
+    # "num_heads": 4,
+    "N": regular_settings.get('NUM_NODES', 170),
+    "input_dim": 3,
     "output_dim": 1,
-    "input_embedding_dim": 24,
-    "tod_embedding_dim": 24,
-    "dow_embedding_dim": 24,
-    "spatial_embedding_dim": 0,
-    "adaptive_embedding_dim": 80,
-    "feed_forward_dim": 256,
-    "num_heads": 4,
-    "num_layers": 3,
-    "dropout": 0.1,
-    "use_mixed_proj": True,
+    "num_hours": 288
 }
-NUM_EPOCHS = 40
+NUM_EPOCHS = 100
+
+# Training-specific parameters
+LEARNING_RATE = 0.001
+LAMBDA_ORTHO = 0.0
+LAMBDA_SPARSE = 0.0
+LAMBDA_ERRSUP = 0.0
+ERRSUP_MODE = "mse"
+USE_RECONSTRUCTOR = False
+RECON_PRETRAIN_EPOCHS = 10
+RECON_LR = 0.001
+CHANNELS = [32, 64, 32]
 
 ############################## General Configuration ##############################
 CFG = EasyDict()
 # General settings
-CFG.DESCRIPTION = 'An Example Config'
+CFG.DESCRIPTION = 'AdaST Configuration for PEMS08'
 CFG.GPU_NUM = 1 # Number of GPUs to use (0 for CPU mode)
 # Runner
 CFG.RUNNER = SimpleTimeSeriesForecastingRunner
@@ -87,7 +91,6 @@ CFG.MODEL.FORWARD_FEATURES = [0, 1, 2]
 CFG.MODEL.TARGET_FEATURES = [0]
 
 ############################## Metrics Configuration ##############################
-
 CFG.METRICS = EasyDict()
 # Metrics settings
 CFG.METRICS.FUNCS = EasyDict({
@@ -107,41 +110,56 @@ CFG.TRAIN.CKPT_SAVE_DIR = os.path.join(
     '_'.join([DATA_NAME, str(CFG.TRAIN.NUM_EPOCHS), str(INPUT_LEN), str(OUTPUT_LEN)])
 )
 CFG.TRAIN.LOSS = masked_mae
+
 # Optimizer settings
 CFG.TRAIN.OPTIM = EasyDict()
 CFG.TRAIN.OPTIM.TYPE = "Adam"
 CFG.TRAIN.OPTIM.PARAM = {
-    "lr": 0.001,
-    "weight_decay": 0.0003,
+    "lr": LEARNING_RATE,
+    "weight_decay": 0.0,
 }
+
 # Learning rate scheduler settings
 CFG.TRAIN.LR_SCHEDULER = EasyDict()
 CFG.TRAIN.LR_SCHEDULER.TYPE = "MultiStepLR"
 CFG.TRAIN.LR_SCHEDULER.PARAM = {
-    "milestones": [20, 25],
-    "gamma": 0.1
+    "milestones": [1, 50, 80],
+    "gamma": 0.5
 }
+
+CFG.TRAIN.CLIP_GRAD_PARAM = {
+    'max_norm': 5.0
+}
+
 # Train data loader settings
 CFG.TRAIN.DATA = EasyDict()
 CFG.TRAIN.DATA.BATCH_SIZE = 16
 CFG.TRAIN.DATA.SHUFFLE = True
 
+# Additional training parameters specific to AdaST
+CFG.TRAIN.LAMBDA_ORTHO = LAMBDA_ORTHO
+CFG.TRAIN.LAMBDA_SPARSE = LAMBDA_SPARSE
+CFG.TRAIN.LAMBDA_ERRSUP = LAMBDA_ERRSUP
+CFG.TRAIN.ERRSUP_MODE = ERRSUP_MODE
+CFG.TRAIN.USE_RECONSTRUCTOR = USE_RECONSTRUCTOR
+CFG.TRAIN.RECON_PRETRAIN_EPOCHS = RECON_PRETRAIN_EPOCHS
+CFG.TRAIN.RECON_LR = RECON_LR
+CFG.TRAIN.CHANNELS = CHANNELS
+
 ############################## Validation Configuration ##############################
 CFG.VAL = EasyDict()
 CFG.VAL.INTERVAL = 1
 CFG.VAL.DATA = EasyDict()
-CFG.VAL.DATA.BATCH_SIZE = 64
+CFG.VAL.DATA.BATCH_SIZE = 16
 
 ############################## Test Configuration ##############################
 CFG.TEST = EasyDict()
 CFG.TEST.INTERVAL = 1
 CFG.TEST.DATA = EasyDict()
-CFG.TEST.DATA.BATCH_SIZE = 64
+CFG.TEST.DATA.BATCH_SIZE = 16
 
 ############################## Evaluation Configuration ##############################
-
 CFG.EVAL = EasyDict()
-
 # Evaluation parameters
-CFG.EVAL.HORIZONS = [3, 6, 12] # Prediction horizons for evaluation. Default: []
-CFG.EVAL.USE_GPU = True # Whether to use GPU for evaluation. Default: True
+CFG.EVAL.HORIZONS = [3, 6, 12] # Prediction horizons for evaluation
+CFG.EVAL.USE_GPU = True # Whether to use GPU for evaluation

@@ -1,0 +1,1 @@
+python experiments/train.py -c baselines/AdaST/PEMS-BAY.py

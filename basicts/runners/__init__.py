@@ -6,8 +6,10 @@ from .base_utsf_runner import BaseUniversalTimeSeriesForecastingRunner
 from .runner_zoo.no_bp_runner import NoBPRunner
 from .runner_zoo.simple_tsc_runner import SimpleTimeSeriesClassificationRunner
 from .runner_zoo.simple_tsf_runner import SimpleTimeSeriesForecastingRunner
+from .runner_zoo.emb_tsf_runner import EmbTimeSeriesForecastingRunner
 
 __all__ = ['BaseEpochRunner', 'BaseTimeSeriesForecastingRunner',
            'BaseIterationRunner', 'BaseUniversalTimeSeriesForecastingRunner',
            'SimpleTimeSeriesForecastingRunner', 'NoBPRunner',
-           'BaseTimeSeriesClassificationRunner', 'SimpleTimeSeriesClassificationRunner']
+           'BaseTimeSeriesClassificationRunner', 'SimpleTimeSeriesClassificationRunner',
+           'EmbTimeSeriesForecastingRunner']
