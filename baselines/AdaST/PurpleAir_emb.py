@@ -34,7 +34,7 @@ MODEL_PARAM = {
     "input_dim": 3, # the C in [B, L, N, C]
     "output_dim": 1,
     "input_embedding_dim": 24,
-    "tod_embedding_dim": 0,
+    "tod_embedding_dim": 24,
     "dow_embedding_dim": 24,
     "spatial_embedding_dim": 24,
     "adaptive_embedding_dim": 80,

@@ -16,10 +16,8 @@ from .arch import CATS
 # Dataset & Metrics configuration
 DATA_NAME = 'Weather'  # Dataset name
 regular_settings = get_regular_settings(DATA_NAME)
-# INPUT_LEN = regular_settings['INPUT_LEN']  # Length of input sequence
-# OUTPUT_LEN = regular_settings['OUTPUT_LEN']  # Length of output sequence
-INPUT_LEN = 96
-OUTPUT_LEN = 96
+INPUT_LEN = 12  # Length of input sequence
+OUTPUT_LEN = 12  # Length of output sequence
 TRAIN_VAL_TEST_RATIO = regular_settings['TRAIN_VAL_TEST_RATIO']  # Train/Validation/Test split ratios
 NORM_EACH_CHANNEL = regular_settings['NORM_EACH_CHANNEL'] # Whether to normalize each channel of the data
 RESCALE = regular_settings['RESCALE'] # Whether to rescale the data
@@ -43,7 +41,7 @@ MODEL_PARAM = {
     "QAM_end": 0.2,
     "store_attn": False
 }   
-NUM_EPOCHS = 100
+NUM_EPOCHS = 30
 
 ############################## General Configuration ##############################
 CFG = EasyDict()

@@ -35,7 +35,7 @@ MODEL_PARAM = {
     "input_embedding_dim": 24,
     "tod_embedding_dim": 24,
     "dow_embedding_dim": 24,
-    "spatial_embedding_dim": 0,
+    "spatial_embedding_dim": 24,
     "adaptive_embedding_dim": 80,
     "feed_forward_dim": 256,
     "num_heads": 4,

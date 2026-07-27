@@ -4,7 +4,7 @@ import torch
 from easydict import EasyDict
 sys.path.append(os.path.abspath(__file__ + '/../../..'))
 
-from basicts.metrics import masked_mae, masked_mape, masked_rmse
+from basicts.metrics import masked_mae, masked_mape, masked_rmse, masked_mse
 from basicts.data import TimeSeriesForecastingDataset
 from basicts.runners import SimpleTimeSeriesForecastingRunner
 from basicts.scaler import ZScoreScaler
@@ -16,8 +16,8 @@ from .arch import STID
 # Dataset & Metrics configuration
 DATA_NAME = 'METR-LA'  # Dataset name
 regular_settings = get_regular_settings(DATA_NAME)
-INPUT_LEN = regular_settings['INPUT_LEN']  # Length of input sequence
-OUTPUT_LEN = regular_settings['OUTPUT_LEN']  # Length of output sequence
+INPUT_LEN = 12  # Length of input sequence
+OUTPUT_LEN = 12 # Length of output sequence
 TRAIN_VAL_TEST_RATIO = regular_settings['TRAIN_VAL_TEST_RATIO']  # Train/Validation/Test split ratios
 NORM_EACH_CHANNEL = regular_settings['NORM_EACH_CHANNEL'] # Whether to normalize each channel of the data
 RESCALE = regular_settings['RESCALE'] # Whether to rescale the data
@@ -40,7 +40,7 @@ MODEL_PARAM = {
     "time_of_day_size": 288,
     "day_of_week_size": 7
 }
-NUM_EPOCHS = 100
+NUM_EPOCHS = 30
 
 ############################## General Configuration ##############################
 CFG = EasyDict()
@@ -91,6 +91,7 @@ CFG.METRICS.FUNCS = EasyDict({
                                 'MAE': masked_mae,
                                 'MAPE': masked_mape,
                                 'RMSE': masked_rmse,
+                                'MSE' : masked_mse
                             })
 CFG.METRICS.TARGET = 'MAE'
 CFG.METRICS.NULL_VAL = NULL_VAL

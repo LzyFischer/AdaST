@@ -32,7 +32,7 @@ MODEL_PARAM = {
         "layers": 4,
         "stacks": 10
     }
-NUM_EPOCHS = 100
+NUM_EPOCHS = 30
 
 ############################## General Configuration ##############################
 CFG = EasyDict()

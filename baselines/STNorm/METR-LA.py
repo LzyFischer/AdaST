@@ -4,13 +4,14 @@ import torch
 from easydict import EasyDict
 sys.path.append(os.path.abspath(__file__ + '/../../..'))
 
-from basicts.metrics import masked_mae, masked_mape, masked_rmse
+from basicts.metrics import masked_mae, masked_mape, masked_rmse, masked_mse
 from basicts.data import TimeSeriesForecastingDataset
 from basicts.runners import SimpleTimeSeriesForecastingRunner
 from basicts.scaler import ZScoreScaler
 from basicts.utils import get_regular_settings, load_adj
 
 from .arch import STNorm
+import pdb
 
 ############################## Hot Parameters ##############################
 # Dataset & Metrics configuration
@@ -86,6 +87,7 @@ CFG.METRICS.FUNCS = EasyDict({
                                 'MAE': masked_mae,
                                 'MAPE': masked_mape,
                                 'RMSE': masked_rmse,
+                                'MSE': masked_mse
                             })
 CFG.METRICS.TARGET = 'MAE'
 CFG.METRICS.NULL_VAL = NULL_VAL

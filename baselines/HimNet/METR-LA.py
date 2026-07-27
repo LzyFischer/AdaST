@@ -5,7 +5,7 @@ from easydict import EasyDict
 
 sys.path.append(os.path.abspath(__file__ + '/../../..'))
 
-from basicts.metrics import masked_mae, masked_mape, masked_rmse, masked_huber
+from basicts.metrics import masked_mae, masked_mape, masked_rmse, masked_huber, masked_mse
 from basicts.data import TimeSeriesForecastingDataset
 from basicts.scaler import ZScoreScaler
 from basicts.utils import get_regular_settings
@@ -32,7 +32,7 @@ HIMNET_CONFIG = {
   'milestones': [30, 40],
   'clip_grad': 5,
   'batch_size': 16,
-  'max_epochs': 200,
+  'max_epochs': 30,
   'early_stop': 20
 }
 
@@ -106,6 +106,7 @@ CFG.METRICS.FUNCS = EasyDict({
                                 'MAE': masked_mae,
                                 'MAPE': masked_mape,
                                 'RMSE': masked_rmse,
+                                'MSE': masked_mse
                             })
 CFG.METRICS.TARGET = 'MAE'
 CFG.METRICS.NULL_VAL = NULL_VAL

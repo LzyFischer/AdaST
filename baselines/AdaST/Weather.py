@@ -4,7 +4,7 @@ import torch
 from easydict import EasyDict
 sys.path.append(os.path.abspath(__file__ + '/../../..'))
 
-from basicts.metrics import masked_mae, masked_mape, masked_rmse
+from basicts.metrics import masked_mae, masked_mape, masked_rmse, masked_mse
 from basicts.data import TimeSeriesForecastingDataset
 from basicts.runners import EmbTimeSeriesForecastingRunner
 from basicts.scaler import ZScoreScaler
@@ -16,8 +16,8 @@ from .arch import AdaST
 # Dataset & Metrics configuration
 DATA_NAME = 'Weather'  # Dataset name
 regular_settings = get_regular_settings(DATA_NAME)
-INPUT_LEN = regular_settings['INPUT_LEN']  # Length of input sequence
-OUTPUT_LEN = regular_settings['OUTPUT_LEN']  # Length of output sequence
+INPUT_LEN = 12  # Length of input sequence
+OUTPUT_LEN = 12  # Length of output sequence
 TRAIN_VAL_TEST_RATIO = regular_settings['TRAIN_VAL_TEST_RATIO']  # Train/Validation/Test split ratios
 NORM_EACH_CHANNEL = regular_settings['NORM_EACH_CHANNEL'] # Whether to normalize each channel of the data
 RESCALE = regular_settings['RESCALE'] # Whether to rescale the data
@@ -35,7 +35,7 @@ MODEL_PARAM = {
     "input_embedding_dim": 24,
     "tod_embedding_dim": 24,
     "dow_embedding_dim": 24,
-    "spatial_embedding_dim": 0,
+    "spatial_embedding_dim": 24,
     "adaptive_embedding_dim": 80,
     "feed_forward_dim": 256,
     "num_heads": 4,
@@ -43,7 +43,7 @@ MODEL_PARAM = {
     "dropout": 0.1,
     "use_mixed_proj": True,
 }
-NUM_EPOCHS = 1
+NUM_EPOCHS = 30
 
 ############################## General Configuration ##############################
 CFG = EasyDict()
@@ -94,6 +94,7 @@ CFG.METRICS.FUNCS = EasyDict({
                                 'MAE': masked_mae,
                                 'MAPE': masked_mape,
                                 'RMSE': masked_rmse,
+                                'MSE': masked_mse
                             })
 CFG.METRICS.TARGET = 'MAE'
 CFG.METRICS.NULL_VAL = NULL_VAL
@@ -138,8 +139,8 @@ CFG.TEST.INTERVAL = 1
 CFG.TEST.DATA = EasyDict()
 CFG.TEST.DATA.BATCH_SIZE = 64
 # Enable saving embeddings and gate weights during testing
-CFG.TEST.SAVE_EMBEDDINGS = True      # Set to True to save embeddings (st, s, t)
-CFG.TEST.SAVE_GATE_WEIGHTS = True    # Set to True to save gate weights
+CFG.TEST.SAVE_EMBEDDINGS = False      # Set to True to save embeddings (st, s, t)
+CFG.TEST.SAVE_GATE_WEIGHTS = False    # Set to True to save gate weights
 
 ############################## Evaluation Configuration ##############################
 
