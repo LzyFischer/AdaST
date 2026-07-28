@@ -187,3 +187,6 @@ cython_debug/
 
 # not ignore requirements.txt
 !*requirements.txt
+
+experiments_rebuttal/*
+experiments_rebuttal/

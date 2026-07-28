@@ -31,7 +31,7 @@ HIMNET_CONFIG = {
   'weight_decay': 0.0001,
   'milestones': [30, 50],
   'clip_grad': 5,
-  'batch_size': 16,
+  'batch_size': 64,
   'max_epochs': 200,
   'early_stop': 20
 }
