@@ -1,1 +1,0 @@
-python experiments/train.py -c baselines/HimNet/PEMS08.py

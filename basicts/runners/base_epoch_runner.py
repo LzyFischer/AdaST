@@ -862,7 +862,7 @@ class BaseEpochRunner(metaclass=ABCMeta):
             if self.scheduler is not None:
                 self.scheduler.last_epoch = checkpoint_dict['epoch']
             self.logger.info('Resume training')
-        except:
+        except Exception:
             pass
 
     def backward(self, loss: torch.Tensor):
