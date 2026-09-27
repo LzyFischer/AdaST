@@ -6,8 +6,6 @@ import numpy as np
 import pandas as pd
 from generate_adj_mx import generate_adj_pems04 as generate_adj
 
-import pdb
-
 # Hyperparameters
 dataset_name = 'PurpleAir'
 data_file_path = f'datasets/raw_data/{dataset_name}/{dataset_name}.csv'

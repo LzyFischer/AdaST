@@ -11,7 +11,6 @@ from basicts.scaler import ZScoreScaler
 from basicts.utils import get_regular_settings
 
 from .arch import STID
-import pdb
 
 ############################## Hot Parameters ##############################
 # Dataset & Metrics configuration
